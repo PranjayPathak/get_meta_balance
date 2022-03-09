@@ -1,6 +1,13 @@
 <template>
   <div class="login_form_container">
-    <button class="login_button" v-on:click="login">Login with metamask</button>
+    <button
+      v-if="login === false"
+      class="login_button"
+      v-on:click="loginToMeta"
+    >
+      Login with Metamask
+    </button>
+    <h2 v-else>Your balance is {{ balance }} ETH</h2>
   </div>
 </template>
 
@@ -8,28 +15,32 @@
 import Web3 from "web3/dist/web3.min.js";
 export default {
   name: "App",
+  data() {
+    return {
+      login: false,
+      balance: "...",
+    };
+  },
   components: {},
   methods: {
-    async login() {
+    async loginToMeta() {
       if (typeof window.ethereum !== "undefined") {
-        console.log("MetaMask is installed!");
+        // MetaMask is installed
         let web3 = new Web3(window.ethereum);
         try {
           // Request account access
-          await window.ethereum.enable();
-          let accounts = await web3.eth.getAccounts();
-          console.log(accounts);
+          await window.ethereum.send("eth_requestAccounts");
 
+          let accounts = await web3.eth.getAccounts();
           let balance = await web3.eth.getBalance(accounts[0]);
-          console.log(balance);
-          return true;
-        } catch (e) {
+          this.balance = balance;
+          this.login = true;
+        } catch (err) {
           // User denied access
-          console.error(" User denied access");
-          return false;
+          console.info(" User denied access");
         }
       } else {
-        console.log("Unable to detect MetaMask");
+        alert("Unable to detect MetaMask");
       }
     },
   },
@@ -47,6 +58,22 @@ export default {
 
 * {
   box-sizing: border-box;
+}
+
+body {
+  background-color: rgb(185, 194, 248);
+}
+
+.login_button {
+  padding: 1rem;
+  border-radius: 5px;
+  background-color: blueviolet;
+  color: aliceblue;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.login_button:hover {
+  background-color: darkorchid;
 }
 
 h1,
