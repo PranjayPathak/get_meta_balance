@@ -29,7 +29,7 @@ export default {
         let web3 = new Web3(window.ethereum);
         try {
           // Request account access
-          await window.ethereum.send("eth_requestAccounts");
+          await window.ethereum.request({ method: "eth_requestAccounts" });
 
           let accounts = await web3.eth.getAccounts();
           let balance = await web3.eth.getBalance(accounts[0]);
