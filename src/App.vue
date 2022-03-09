@@ -1,10 +1,6 @@
 <template>
   <div class="login_form_container">
-    <button
-      v-if="login === false"
-      class="login_button"
-      v-on:click="loginToMeta"
-    >
+    <button v-if="!login" class="login_button" v-on:click="loginToMeta">
       Login with Metamask
     </button>
     <h2 v-else>Your balance is {{ balance }} ETH</h2>
@@ -26,11 +22,11 @@ export default {
     async loginToMeta() {
       if (typeof window.ethereum !== "undefined") {
         // MetaMask is installed
-        let web3 = new Web3(window.ethereum);
         try {
           // Request account access
           await window.ethereum.request({ method: "eth_requestAccounts" });
 
+          let web3 = new Web3(window.ethereum);
           let accounts = await web3.eth.getAccounts();
           let balance = await web3.eth.getBalance(accounts[0]);
           this.balance = balance;
