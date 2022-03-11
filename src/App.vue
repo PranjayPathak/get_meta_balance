@@ -7,23 +7,21 @@
     </div>
     <div v-else>
       <div class="balance_dashboard">
-        <!-- <button v-if="balance === null" class="button" v-on:click="getBalance">
+        <button v-if="balance === null" class="button" v-on:click="getBalance">
           Get ETH Balance
         </button>
         <div v-else>
           <hr />
           <h2>Chain ID: {{ chainId }}</h2>
-          <hr />
           <h2>Balance: {{ balance }} ETH</h2>
           <hr />
-        </div> -->
-
+        </div>
+        <hr />
         <div>
           <h3>Get TOKEN Balance</h3>
           <br />
           <select v-model="selectedToken">
             <option disabled value="TOKEN">Please Select</option>
-            <option>ETH</option>
             <option>HEX</option>
             <option>SHIB</option>
           </select>
@@ -37,6 +35,29 @@
           <br />
           <br />
           <p>Balance of {{ selectedToken }} is {{ tokenBalance }}</p>
+        </div>
+        <br />
+        <hr />
+        <br />
+        <div>
+          <h3>Send Transaction</h3>
+          <br />
+          <div>
+            <form v-on:submit.prevent="sendTransaction">
+              <label for="senAddr">Send To:</label>
+              <input id="senAddr" type="text" v-model="recieverAddress" />
+              <label for="senAddr">Amount:</label>
+              <input
+                id="senAddr"
+                max="5"
+                min="1"
+                type="number"
+                v-model="transactionAmount"
+              />
+              <br />
+              <button class="button">Send</button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
@@ -56,6 +77,8 @@ export default {
       chainId: null,
       selectedToken: null,
       tokenBalance: null,
+      recieverAddress: "0x30E0DEa1ABFf57bfA81ccB2E57A3dEA865489363",
+      transactionAmount: 2,
     };
   },
   methods: {
@@ -90,7 +113,6 @@ export default {
     },
     async getTokenBalance() {
       const tokenAddress = {
-        ETH: "0x2Cdaa8a351DFc17657C69cd79024a0d2ad504d39",
         HEX: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
         SHIB: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE",
       };
@@ -122,6 +144,22 @@ export default {
         tokenAddress[this.selectedToken]
       );
       this.tokenBalance = await tokenInst.methods.balanceOf(accounts[0]).call();
+    },
+    async sendTransaction() {
+      const web3 = new Web3(window.ethereum);
+      const accounts = await web3.eth.getAccounts();
+      await web3.eth
+        .sendTransaction({
+          from: accounts[0],
+          to: this.recieverAddress,
+          value: this.transactionAmount,
+        })
+        .on("confirmation", function () {
+          console.log("transaction successfull");
+        })
+        .on("error", (err) =>
+          console.log("unable to perform transaction: ", err)
+        );
     },
   },
 };
@@ -156,10 +194,12 @@ body {
   background-color: darkorchid;
 }
 
-.container {
-  padding: 5rem;
-  margin-top: 10rem;
+input {
+  padding: 1rem;
+  margin: 1rem;
+  border-radius: 4px;
 }
+
 h1,
 h2,
 h3,
