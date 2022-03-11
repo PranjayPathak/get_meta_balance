@@ -1,9 +1,24 @@
 <template>
-  <div class="login_form_container">
-    <button v-if="!login" class="login_button" v-on:click="loginToMeta">
-      Login with Metamask
-    </button>
-    <h2 v-else>Your balance is {{ balance }} ETH</h2>
+  <div class="container">
+    <div v-if="!isLoggedIn">
+      <button class="button" v-on:click="loginToMeta">
+        Login with Metamask
+      </button>
+    </div>
+    <div v-else>
+      <div class="balance_dashboard">
+        <button v-if="balance == null" class="button" v-on:click="getBalance">
+          Get Balance
+        </button>
+        <div v-else>
+          <hr />
+          <h2>Chain ID: {{ chainId }}</h2>
+          <hr />
+          <h2>Balance: {{ balance }} ETH</h2>
+          <hr />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -13,11 +28,13 @@ export default {
   name: "App",
   data() {
     return {
-      login: false,
-      balance: "...",
+      isLoggedIn: window.localStorage.getItem("isLoggedIn")
+        ? window.localStorage.getItem("isLoggedIn")
+        : false,
+      balance: null,
+      chainId: null,
     };
   },
-  components: {},
   methods: {
     async loginToMeta() {
       if (typeof window.ethereum !== "undefined") {
@@ -26,18 +43,26 @@ export default {
           // Request account access
           await window.ethereum.request({ method: "eth_requestAccounts" });
 
-          let web3 = new Web3(window.ethereum);
-          let accounts = await web3.eth.getAccounts();
-          let balance = await web3.eth.getBalance(accounts[0]);
-          this.balance = balance;
-          this.login = true;
+          //update login state and logins status in local storage
+          this.isLoggedIn = true;
+          if (window.localStorage) {
+            window.localStorage.setItem("isLoggedIn", true);
+          }
         } catch (err) {
           // User denied access
-          console.info(" User denied access");
+          console.error("Error while connecting to Metamask");
         }
       } else {
         alert("Unable to detect MetaMask");
       }
+    },
+    async getBalance() {
+      let web3 = new Web3(window.ethereum);
+      let accounts = await web3.eth.getAccounts();
+      let chainId = await web3.eth.getChainId();
+      let balance = await web3.eth.getBalance(accounts[0]);
+      this.chainId = chainId;
+      this.balance = await web3.utils.fromWei(balance, "ether"); //from Wei to ETH
     },
   },
 };
@@ -60,7 +85,7 @@ body {
   background-color: rgb(185, 194, 248);
 }
 
-.login_button {
+.button {
   padding: 1rem;
   border-radius: 5px;
   background-color: blueviolet;
@@ -72,6 +97,10 @@ body {
   background-color: darkorchid;
 }
 
+.container {
+  padding: 5rem;
+  margin-top: 10rem;
+}
 h1,
 h2,
 h3,
