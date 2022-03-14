@@ -7,18 +7,52 @@
     </div>
     <div v-else>
       <div class="balance_dashboard">
-        <button v-if="balance === null" class="button" v-on:click="getBalance">
-          Get ETH Balance
-        </button>
-        <div v-else>
-          <hr />
-          <h2>Chain ID: {{ chainId }}</h2>
-          <h2>Balance: {{ balance }} ETH</h2>
-          <hr />
+        <div class="container">
+          <button class="button" v-on:click="getBalance">
+            Get ETH Balance
+          </button>
+          <div v-if="isBalance">
+            <h4>Chain ID: {{ chainId }}</h4>
+            <h4>Balance: {{ balance }} ETH</h4>
+          </div>
         </div>
         <hr />
-        <div>
-          <h3>Get TOKEN Balance</h3>
+        <hr />
+        <div class="container">
+          <h4>Send Transaction</h4>
+          <br />
+          <div>
+            <form v-on:submit.prevent="sendTransaction">
+              <label for="sendAddress">Send To:</label>
+              <input id="sendAddress" type="text" v-model="recieverAddress" />
+              <label for="transactionAmount">Amount (in wei):</label>
+              <input
+                id="transactionAmount"
+                min="1"
+                type="number"
+                v-model="transactionAmount"
+              />
+              <br />
+              <button class="button">Send</button>
+              <div>
+                <div v-if="transactionDone">
+                  <h4>Transaction Successful!</h4>
+                  <a
+                    target="_blank"
+                    v-bind:href="
+                      'https://goerli.etherscan.io/tx/' + transactionHash
+                    "
+                    >Checkout on Etherscan -></a
+                  >
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <hr />
+        <hr />
+        <div class="container">
+          <h4>Get TOKEN Balance</h4>
           <br />
           <select v-model="selectedToken">
             <option disabled value="TOKEN">Please Select</option>
@@ -31,33 +65,10 @@
           <button v-on:click="getTokenBalance" class="button">
             Get Balance
           </button>
-
           <br />
-          <br />
-          <p>Balance of {{ selectedToken }} is {{ tokenBalance }}</p>
-        </div>
-        <br />
-        <hr />
-        <br />
-        <div>
-          <h3>Send Transaction</h3>
-          <br />
-          <div>
-            <form v-on:submit.prevent="sendTransaction">
-              <label for="senAddr">Send To:</label>
-              <input id="senAddr" type="text" v-model="recieverAddress" />
-              <label for="senAddr">Amount:</label>
-              <input
-                id="senAddr"
-                max="5"
-                min="1"
-                type="number"
-                v-model="transactionAmount"
-              />
-              <br />
-              <button class="button">Send</button>
-            </form>
-          </div>
+          <p v-if="istokenBalance">
+            Balance of {{ selectedToken }} is {{ tokenBalance }}
+          </p>
         </div>
       </div>
     </div>
@@ -74,11 +85,17 @@ export default {
         ? window.localStorage.getItem("isLoggedIn")
         : false,
       balance: null,
+      isBalance: false,
       chainId: null,
+      //for Token Balance
       selectedToken: null,
       tokenBalance: null,
+      istokenBalance: false,
+      //For Transaction
       recieverAddress: "0x30E0DEa1ABFf57bfA81ccB2E57A3dEA865489363",
       transactionAmount: 2,
+      transactionHash: null,
+      transactionDone: false,
     };
   },
   methods: {
@@ -105,11 +122,12 @@ export default {
     async getBalance() {
       const web3 = new Web3(window.ethereum);
       const accounts = await web3.eth.getAccounts();
-      console.log(accounts);
+      const selectedAccount = accounts[0];
       let chainId = await web3.eth.getChainId();
-      let balance = await web3.eth.getBalance(accounts[0]);
+      let balance = await web3.eth.getBalance(selectedAccount);
       this.chainId = chainId;
       this.balance = await web3.utils.fromWei(balance, "ether"); //from Wei to ETH
+      this.isBalance = true;
     },
     async getTokenBalance() {
       const tokenAddress = {
@@ -139,26 +157,35 @@ export default {
 
       const web3 = new Web3(window.ethereum);
       const accounts = await web3.eth.getAccounts();
-      let tokenInst = new web3.eth.Contract(
+      const selectedAccount = accounts[0];
+      const tokenInstance = new web3.eth.Contract(
         tokenABI,
         tokenAddress[this.selectedToken]
       );
-      this.tokenBalance = await tokenInst.methods.balanceOf(accounts[0]).call();
+      this.tokenBalance = await tokenInstance.methods
+        .balanceOf(selectedAccount)
+        .call();
     },
     async sendTransaction() {
       const web3 = new Web3(window.ethereum);
       const accounts = await web3.eth.getAccounts();
+      const selectedAccount = accounts[0];
+      this.transactionDone = false;
       await web3.eth
         .sendTransaction({
-          from: accounts[0],
+          from: selectedAccount,
           to: this.recieverAddress,
           value: this.transactionAmount,
         })
-        .on("confirmation", function () {
-          console.log("transaction successfull");
+        .on("transactionHash", (hash) => {
+          this.transactionHash = hash;
+        })
+        .on("receipt", () => {
+          alert("Transaction Successful!");
+          this.transactionDone = true;
         })
         .on("error", (err) =>
-          console.log("unable to perform transaction: ", err)
+          console.log("Unable to perform transaction: ", err)
         );
     },
   },
@@ -171,7 +198,7 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
-  margin-top: 60px;
+  margin-top: 10px;
 }
 
 * {
@@ -181,9 +208,11 @@ export default {
 body {
   background-color: rgb(185, 194, 248);
 }
-
+.container {
+  margin: 2rem 0;
+}
 .button {
-  padding: 1rem;
+  padding: 0.5rem 1rem;
   border-radius: 5px;
   background-color: blueviolet;
   color: aliceblue;
@@ -194,20 +223,10 @@ body {
   background-color: darkorchid;
 }
 
-input {
-  padding: 1rem;
+input,
+select {
+  padding: 0.5rem 1rem;
   margin: 1rem;
   border-radius: 4px;
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-p,
-body {
-  margin: 0;
 }
 </style>
