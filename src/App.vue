@@ -62,7 +62,11 @@
 
           <br />
           <br />
-          <button v-on:click="getTokenBalance" class="button">
+          <button
+            v-bind:disabled="!selectedToken"
+            v-on:click="getTokenBalance"
+            class="button"
+          >
             Get Balance
           </button>
           <br />
@@ -162,9 +166,16 @@ export default {
         tokenABI,
         tokenAddress[this.selectedToken]
       );
-      this.tokenBalance = await tokenInstance.methods
+      await tokenInstance.methods
         .balanceOf(selectedAccount)
-        .call();
+        .call()
+        .then((response) => {
+          this.tokenBalance = response;
+          this.istokenBalance = true;
+        })
+        .catch(() => {
+          console.log("Unable to fetch balance of selected token");
+        });
     },
     async sendTransaction() {
       const web3 = new Web3(window.ethereum);
