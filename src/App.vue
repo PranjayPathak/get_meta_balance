@@ -36,11 +36,7 @@
               <div>
                 <div v-if="transactionDone">
                   <h4>Transaction Successful!!</h4>
-                  <a
-                    target="_blank"
-                    v-bind:href="
-                      'https://goerli.etherscan.io/tx/' + transactionHash
-                    "
+                  <a target="_blank" v-bind:href="etherscanUrl"
                     >Checkout on Etherscan -></a
                   >
                 </div>
@@ -87,6 +83,8 @@ export default {
       isLoggedIn: window.localStorage.getItem("isLoggedIn")
         ? window.localStorage.getItem("isLoggedIn")
         : false,
+      web3: null,
+      selectedAccount: null,
       balance: null,
       isBalance: false,
       chainId: null,
@@ -100,6 +98,11 @@ export default {
       transactionHash: null,
       transactionDone: false,
     };
+  },
+  computed: {
+    etherscanUrl() {
+      return "https://goerli.etherscan.io/tx/" + this.transactionHash;
+    },
   },
   methods: {
     //Login method
@@ -115,6 +118,11 @@ export default {
           if (window.localStorage) {
             window.localStorage.setItem("isLoggedIn", true);
           }
+
+          //Initialize web3 instance and selected account
+          this.web3 = new Web3(window.ethereum);
+          const accounts = await this.web3.eth.getAccounts();
+          this.selectedAccount = accounts[0];
         } catch (err) {
           // User denied access
           console.error("Error while connecting to Metamask");
@@ -125,13 +133,10 @@ export default {
     },
     // Etherium balance
     async getBalance() {
-      const web3 = new Web3(window.ethereum);
-      const accounts = await web3.eth.getAccounts();
-      const selectedAccount = accounts[0];
-      let chainId = await web3.eth.getChainId();
-      let balance = await web3.eth.getBalance(selectedAccount);
+      let chainId = await this.web3.eth.getChainId();
+      let balance = await this.web3.eth.getBalance(this.selectedAccount);
       this.chainId = chainId;
-      this.balance = await web3.utils.fromWei(balance, "ether"); //from Wei to ETH
+      this.balance = await this.web3.utils.fromWei(balance, "ether"); //from Wei to ETH
       this.isBalance = true;
     },
     //Fetch token balance
@@ -161,36 +166,29 @@ export default {
         },
       ];
 
-      const web3 = new Web3(window.ethereum);
-      const accounts = await web3.eth.getAccounts();
-      const selectedAccount = accounts[0];
-      const tokenInstance = new web3.eth.Contract(
+      const tokenInstance = new this.web3.eth.Contract(
         tokenABI,
         tokenAddress[this.selectedToken]
       );
-      await tokenInstance.methods
-        .balanceOf(selectedAccount)
-        .call()
-        .then((response) => {
-          this.tokenBalance = response;
-          this.istokenBalance = true;
-        })
-        .catch(() => {
-          this.tokenBalance = 0;
-          this.istokenBalance = true;
-          console.log("Unable to fetch balance of selected token");
-        });
+
+      try {
+        let balance = await tokenInstance.methods
+          .balanceOf(this.selectedAccount)
+          .call();
+        this.tokenBalance = balance;
+      } catch {
+        this.tokenBalance = 0;
+        console.log("Unable to fetch balance of selected token");
+      }
+      this.istokenBalance = true;
     },
 
     //Etherium Transaction
     async sendTransaction() {
-      const web3 = new Web3(window.ethereum);
-      const accounts = await web3.eth.getAccounts();
-      const selectedAccount = accounts[0];
       this.transactionDone = false;
-      await web3.eth
+      await this.web3.eth
         .sendTransaction({
-          from: selectedAccount,
+          from: this.selectedAccount,
           to: this.recieverAddress,
           value: this.transactionAmount,
         })
