@@ -19,8 +19,8 @@
         <hr />
         <hr />
         <div class="container">
-          <h4>Send Transaction</h4>
-          <br />
+          <h3>Send Transaction</h3>
+
           <div>
             <form v-on:submit.prevent="sendTransaction">
               <label for="sendAddress">Send To:</label>
@@ -32,11 +32,10 @@
                 type="number"
                 v-model="transactionAmount"
               />
-              <br />
               <button class="button">Send</button>
               <div>
                 <div v-if="transactionDone">
-                  <h4>Transaction Successful!</h4>
+                  <h4>Transaction Successful!!</h4>
                   <a
                     target="_blank"
                     v-bind:href="
@@ -52,8 +51,8 @@
         <hr />
         <hr />
         <div class="container">
-          <h4>Get TOKEN Balance</h4>
-          <br />
+          <h3>Get TOKEN Balance</h3>
+
           <select v-model="selectedToken">
             <option disabled value="TOKEN">Please Select</option>
             <option>HEX</option>
