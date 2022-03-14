@@ -102,6 +102,7 @@ export default {
     };
   },
   methods: {
+    //Login method
     async loginToMeta() {
       if (typeof window.ethereum !== "undefined") {
         // MetaMask is installed
@@ -122,6 +123,7 @@ export default {
         alert("Unable to detect MetaMask");
       }
     },
+    // Etherium balance
     async getBalance() {
       const web3 = new Web3(window.ethereum);
       const accounts = await web3.eth.getAccounts();
@@ -132,6 +134,7 @@ export default {
       this.balance = await web3.utils.fromWei(balance, "ether"); //from Wei to ETH
       this.isBalance = true;
     },
+    //Fetch token balance
     async getTokenBalance() {
       const tokenAddress = {
         HEX: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
@@ -173,9 +176,13 @@ export default {
           this.istokenBalance = true;
         })
         .catch(() => {
+          this.tokenBalance = 0;
+          this.istokenBalance = true;
           console.log("Unable to fetch balance of selected token");
         });
     },
+
+    //Etherium Transaction
     async sendTransaction() {
       const web3 = new Web3(window.ethereum);
       const accounts = await web3.eth.getAccounts();
