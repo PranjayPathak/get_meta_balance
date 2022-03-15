@@ -18,7 +18,7 @@
         </div>
         <hr />
         <hr />
-        <div class="container">
+        <!-- <div class="container">
           <h3>Send Transaction</h3>
 
           <div>
@@ -45,7 +45,7 @@
           </div>
         </div>
         <hr />
-        <hr />
+        <hr /> -->
         <div class="container">
           <h3>Get TOKEN Balance</h3>
 
@@ -53,6 +53,7 @@
             <option disabled value="TOKEN">Please Select</option>
             <option>HEX</option>
             <option>SHIB</option>
+            <option>MATIC</option>
           </select>
 
           <br />
@@ -68,6 +69,46 @@
           <p v-if="istokenBalance">
             Balance of {{ selectedToken }} is {{ tokenBalance }}
           </p>
+        </div>
+
+        <hr />
+        <hr />
+
+        <div class="container">
+          <h3>Send Transaction</h3>
+          <form v-on:submit.prevent="sendTokenTransaction">
+            <label for="tokenAddress">Token Address (default goerli):</label>
+            <input id="tokenAddress" type="text" v-model="tokenAddress" />
+            <br />
+            <label for="recieverAddress"
+              >Reciever Address (default-myDemo Account):</label
+            >
+            <input
+              id="recieverAddress"
+              type="text"
+              v-model="tokenRecieverAddress"
+            />
+            <br />
+            <label for="transactionAmount">Value:</label>
+            <input
+              id="transactionAmount"
+              min="1"
+              type="number"
+              v-model="tokenValue"
+            />
+            <button class="button">Send</button>
+            <div>
+              <div v-if="transactionDone">
+                <h4>Transaction {{ transactionResponseMessage }}</h4>
+                <a target="_blank" v-bind:href="etherscanUrl"
+                  >Checkout on Etherscan -></a
+                >
+              </div>
+            </div>
+          </form>
+
+          <hr />
+          <hr />
         </div>
       </div>
     </div>
@@ -88,15 +129,20 @@ export default {
       balance: null,
       isBalance: false,
       chainId: null,
-      //for Token Balance
+      // for Token Balance
       selectedToken: null,
       tokenBalance: null,
       istokenBalance: false,
       //For Transaction
-      recieverAddress: "0x30E0DEa1ABFf57bfA81ccB2E57A3dEA865489363",
-      transactionAmount: 2,
+      // recieverAddress: "0x30E0DEa1ABFf57bfA81ccB2E57A3dEA865489363",
+      // transactionAmount: 2,
       transactionHash: null,
       transactionDone: false,
+      //For Token Transaction
+      tokenAddress: "0xc915B29eECE19b35894aE040C45A685F126e228f",
+      tokenRecieverAddress: "0x30E0DEa1ABFf57bfA81ccB2E57A3dEA865489363",
+      tokenValue: 1,
+      transactionResponseMessage: "",
     };
   },
   computed: {
@@ -118,11 +164,6 @@ export default {
           if (window.localStorage) {
             window.localStorage.setItem("isLoggedIn", true);
           }
-
-          //Initialize web3 instance and selected account
-          this.web3 = new Web3(window.ethereum);
-          const accounts = await this.web3.eth.getAccounts();
-          this.selectedAccount = accounts[0];
         } catch (err) {
           // User denied access
           console.error("Error while connecting to Metamask");
@@ -139,11 +180,12 @@ export default {
       this.balance = await this.web3.utils.fromWei(balance, "ether"); //from Wei to ETH
       this.isBalance = true;
     },
-    //Fetch token balance
+    // Fetch token balance
     async getTokenBalance() {
       const tokenAddress = {
         HEX: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
         SHIB: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE",
+        MATIC: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
       };
       const tokenABI = [
         {
@@ -182,27 +224,90 @@ export default {
       }
       this.istokenBalance = true;
     },
+    sendTokenTransaction() {
+      let transferABI = [
+        {
+          constant: false,
+          inputs: [
+            {
+              name: "_to",
+              type: "address",
+            },
+            {
+              name: "_value",
+              type: "uint256",
+            },
+          ],
+          name: "transfer",
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+            },
+          ],
+          type: "function",
+        },
+      ];
 
-    //Etherium Transaction
-    async sendTransaction() {
-      this.transactionDone = false;
-      await this.web3.eth
-        .sendTransaction({
-          from: this.selectedAccount,
-          to: this.recieverAddress,
-          value: this.transactionAmount,
-        })
-        .on("transactionHash", (hash) => {
-          this.transactionHash = hash;
-        })
-        .on("receipt", () => {
-          alert("Transaction Successful!");
-          this.transactionDone = true;
-        })
-        .on("error", (err) =>
-          console.log("Unable to perform transaction: ", err)
-        );
+      let contract = new this.web3.eth.Contract(transferABI, this.tokenAddress);
+      try {
+        contract.methods
+          .transfer(this.tokenRecieverAddress, this.tokenValue)
+          .send({ from: this.selectedAccount })
+          .on("transactionHash", (hash) => {
+            this.transactionHash = hash;
+          })
+          .on("receipt", () => {
+            alert("Transaction Successful!");
+
+            this.transactionResponseMessage = "Successful!!!";
+            this.transactionDone = true;
+          })
+          .on("error", () => {
+            console.log("Unable to perform transaction ");
+
+            this.transactionResponseMessage = "Failed!!!";
+            this.transactionHash = "";
+            this.transactionDone = true;
+          });
+      } catch (err) {
+        console.log("Unable to perform the transaction");
+
+        this.transactionResponseMessage = "Failed!!!";
+        this.transactionHash = "";
+        this.transactionDone = true;
+      }
     },
+    //Depricated Method
+    // //Etherium Transaction
+    // async sendTransaction() {
+    //   this.transactionDone = false;
+    //   try {
+    //     await this.web3.eth
+    //       .sendTransaction({
+    //         from: this.selectedAccount,
+    //         to: this.recieverAddress,
+    //         value: this.transactionAmount,
+    //         // common: { baseChain: "goerli" },
+    //       })
+    //       .on("transactionHash", (hash) => {
+    //         this.transactionHash = hash;
+    //       })
+    //       .on("receipt", () => {
+    //         alert("Transaction Successful!");
+    //         this.transactionDone = true;
+    //       })
+    //       .on("error", () => console.log("Unable to perform transaction: "));
+    //   } catch {
+    //     console.log("Unable to perform transaction ");
+    //   }
+    // },
+  },
+  async mounted() {
+    //Initialize web3 instance and selected account
+    this.web3 = new Web3(window.ethereum);
+    const accounts = await this.web3.eth.getAccounts();
+    this.selectedAccount = accounts[0];
   },
 };
 </script>
@@ -224,6 +329,7 @@ body {
   background-color: rgb(185, 194, 248);
 }
 .container {
+  display: inline-block;
   margin: 2rem 0;
 }
 .button {
@@ -237,7 +343,10 @@ body {
 .login_button:hover {
   background-color: darkorchid;
 }
-
+label {
+  font-size: 18px;
+  font-weight: 600;
+}
 input,
 select {
   padding: 0.5rem 1rem;
