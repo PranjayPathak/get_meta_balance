@@ -225,7 +225,7 @@ export default {
       this.istokenBalance = true;
     },
     sendTokenTransaction() {
-      let transferABI = [
+      const transferABI = [
         {
           constant: false,
           inputs: [
