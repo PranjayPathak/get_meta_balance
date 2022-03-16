@@ -241,7 +241,7 @@ export default {
     },
     async sendTokenTransaction() {
       let chainID = await this.web3.eth.getChainId();
-      if (chainID !== 80001 || chainID !== 5) {
+      if (chainID !== 80001 && chainID !== 5) {
         alert("Please shift to Goerli or Mumbai Network ");
         return; //End method
       }
@@ -375,25 +375,21 @@ export default {
         return; //End method
       }
       this.transactionDone = false;
-      try {
-        await this.web3.eth
-          .sendTransaction({
-            from: this.selectedAccount,
-            to: this.recieverAddress,
-            value: this.transactionAmount,
-            // common: { baseChain: "goerli" },
-          })
-          .on("transactionHash", (hash) => {
-            this.transactionHash = hash;
-          })
-          .on("receipt", () => {
-            alert("Transaction Successful!");
-            this.transactionDone = true;
-          })
-          .on("error", () => console.log("Unable to perform transaction: "));
-      } catch {
-        console.log("Unable to perform transaction ");
-      }
+      await this.web3.eth
+        .sendTransaction({
+          from: this.selectedAccount,
+          to: this.recieverAddress,
+          value: this.transactionAmount,
+          // common: { baseChain: "goerli" },
+        })
+        .on("transactionHash", (hash) => {
+          this.transactionHash = hash;
+        })
+        .on("receipt", () => {
+          alert("Transaction Successful!");
+          this.transactionDone = true;
+        })
+        .on("error", () => console.log("Unable to perform transaction: "));
     },
   },
   async mounted() {
