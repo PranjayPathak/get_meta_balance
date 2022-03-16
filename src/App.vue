@@ -18,14 +18,18 @@
         </div>
         <hr />
         <hr />
-        <!-- <div class="container">
+        <div class="container">
           <h3>Send Transaction</h3>
 
           <div>
             <form v-on:submit.prevent="sendTransaction">
-              <label for="sendAddress">Send To:</label>
-              <input id="sendAddress" type="text" v-model="recieverAddress" />
-              <label for="transactionAmount">Amount (in wei):</label>
+              <label for="sendAddress">Send To : </label>
+              <input
+                id="sendAddress"
+                type="text"
+                v-model="recieverAddress"
+              /><br />
+              <label for="transactionAmount">Amount (in wei) : </label>
               <input
                 id="transactionAmount"
                 min="1"
@@ -45,9 +49,9 @@
           </div>
         </div>
         <hr />
-        <hr /> -->
+        <hr />
         <div class="container">
-          <h3>Get TOKEN Balance</h3>
+          <h3>Get Token Balance</h3>
 
           <select v-model="selectedToken">
             <option disabled value="TOKEN">Please Select</option>
@@ -75,41 +79,45 @@
         <hr />
 
         <div class="container">
-          <h3>Send Transaction</h3>
+          <h3>Send Token Transaction</h3>
           <form v-on:submit.prevent="sendTokenTransaction">
-            <label for="tokenAddress">Token Address (default goerli):</label>
+            <label for="tokenAddress">Token Address (default DERC) : </label>
             <input id="tokenAddress" type="text" v-model="tokenAddress" />
             <br />
             <label for="recieverAddress"
-              >Reciever Address (default-myDemo Account):</label
-            >
+              >Reciever Address (default-myDemo Account) :
+            </label>
             <input
               id="recieverAddress"
               type="text"
               v-model="tokenRecieverAddress"
             />
             <br />
-            <label for="transactionAmount">Value:</label>
+            <label for="transactionAmount">Value : </label>
             <input
               id="transactionAmount"
-              min="1"
+              min="0"
               type="number"
               v-model="tokenValue"
             />
             <button class="button">Send</button>
-            <div>
-              <div v-if="transactionDone">
-                <h4>Transaction {{ transactionResponseMessage }}</h4>
-                <a target="_blank" v-bind:href="etherscanUrl"
-                  >Checkout on Etherscan -></a
-                >
-              </div>
-            </div>
           </form>
-
-          <hr />
-          <hr />
+          <div>
+            <p>Chain ID: {{ transactionChainId }}</p>
+            <p>NAME: {{ name }}</p>
+            <p>SYMBOL: {{ symbol }}</p>
+            <p>BALANCE: {{ tokenTransactionBalance }}</p>
+            <p>DECIMALS: {{ decimals }}</p>
+          </div>
+          <div v-if="tokenTransactionDone">
+            <h4>Transaction {{ transactionResponseMessage }}</h4>
+            <a target="_blank" v-bind:href="etherscanUrl"
+              >Checkout on Etherscan -></a
+            >
+          </div>
         </div>
+        <hr />
+        <hr />
       </div>
     </div>
   </div>
@@ -134,15 +142,22 @@ export default {
       tokenBalance: null,
       istokenBalance: false,
       //For Transaction
-      // recieverAddress: "0x30E0DEa1ABFf57bfA81ccB2E57A3dEA865489363",
-      // transactionAmount: 2,
+      recieverAddress: "0x30E0DEa1ABFf57bfA81ccB2E57A3dEA865489363",
+      transactionAmount: 2,
       transactionHash: null,
       transactionDone: false,
       //For Token Transaction
-      tokenAddress: "0xc915B29eECE19b35894aE040C45A685F126e228f",
+      tokenAddress: "0xfe4F5145f6e09952a5ba9e956ED0C25e3Fa4c7F1",
       tokenRecieverAddress: "0x30E0DEa1ABFf57bfA81ccB2E57A3dEA865489363",
       tokenValue: 1,
       transactionResponseMessage: "",
+      tokenTransactionHash: null,
+      tokenTransactionDone: false,
+      transactionChainId: null,
+      tokenTransactionBalance: null,
+      decimals: null,
+      name: "",
+      symbol: "",
     };
   },
   computed: {
@@ -224,7 +239,12 @@ export default {
       }
       this.istokenBalance = true;
     },
-    sendTokenTransaction() {
+    async sendTokenTransaction() {
+      let chainID = await this.web3.eth.getChainId();
+      if (chainID !== 80001 || chainID !== 5) {
+        alert("Please shift to Goerli or Mumbai Network ");
+        return; //End method
+      }
       const transferABI = [
         {
           constant: false,
@@ -247,61 +267,134 @@ export default {
           ],
           type: "function",
         },
+        {
+          constant: true,
+          inputs: [
+            {
+              name: "_owner",
+              type: "address",
+            },
+          ],
+          name: "balanceOf",
+          outputs: [
+            {
+              name: "balance",
+              type: "uint256",
+            },
+          ],
+          payable: false,
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          constant: true,
+          inputs: [],
+          name: "name",
+          outputs: [
+            {
+              name: "",
+              type: "string",
+            },
+          ],
+          payable: false,
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          constant: true,
+          inputs: [],
+          name: "decimals",
+          outputs: [
+            {
+              name: "",
+              type: "uint8",
+            },
+          ],
+          payable: false,
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          constant: true,
+          inputs: [],
+          name: "symbol",
+          outputs: [
+            {
+              name: "",
+              type: "string",
+            },
+          ],
+          payable: false,
+          stateMutability: "view",
+          type: "function",
+        },
       ];
 
       let contract = new this.web3.eth.Contract(transferABI, this.tokenAddress);
+      //Update Chain ID
+      this.transactionChainId = chainID;
       try {
-        contract.methods
-          .transfer(this.tokenRecieverAddress, this.tokenValue)
-          .send({ from: this.selectedAccount })
+        //Update Token Info
+        [this.tokenTransactionBalance, this.decimals, this.name, this.symbol] =
+          await Promise.all([
+            contract.methods.balanceOf(this.selectedAccount).call(),
+            contract.methods.decimals().call(),
+            contract.methods.name().call(),
+            contract.methods.symbol().call(),
+          ]);
+      } catch (err) {
+        console.log("Unable to fetch balance of selected token: ", err);
+      }
+
+      //Transaction
+      await contract.methods
+        .transfer(this.tokenRecieverAddress, this.tokenValue)
+        .send({ from: this.selectedAccount })
+        .on("transactionHash", (hash) => {
+          this.tokenTransactionHash = hash;
+        })
+        .on("receipt", () => {
+          alert("Transaction Successful!");
+
+          this.transactionResponseMessage = "Successful!!!";
+          this.tokenTransactionDone = true;
+        })
+        .on("error", () => {
+          console.log("Unable to perform transaction ");
+
+          this.transactionResponseMessage = "Failed!!!";
+          this.tokenTransactionHash = "";
+          this.tokenTransactionDone = true;
+        });
+    },
+    //Etherium Transaction
+    async sendTransaction() {
+      let chainID = await this.web3.eth.getChainId();
+      if (chainID !== 5) {
+        alert("Please shift to Goerli Network");
+        return; //End method
+      }
+      this.transactionDone = false;
+      try {
+        await this.web3.eth
+          .sendTransaction({
+            from: this.selectedAccount,
+            to: this.recieverAddress,
+            value: this.transactionAmount,
+            // common: { baseChain: "goerli" },
+          })
           .on("transactionHash", (hash) => {
             this.transactionHash = hash;
           })
           .on("receipt", () => {
             alert("Transaction Successful!");
-
-            this.transactionResponseMessage = "Successful!!!";
             this.transactionDone = true;
           })
-          .on("error", () => {
-            console.log("Unable to perform transaction ");
-
-            this.transactionResponseMessage = "Failed!!!";
-            this.transactionHash = "";
-            this.transactionDone = true;
-          });
-      } catch (err) {
-        console.log("Unable to perform the transaction");
-
-        this.transactionResponseMessage = "Failed!!!";
-        this.transactionHash = "";
-        this.transactionDone = true;
+          .on("error", () => console.log("Unable to perform transaction: "));
+      } catch {
+        console.log("Unable to perform transaction ");
       }
     },
-    //Depricated Method
-    // //Etherium Transaction
-    // async sendTransaction() {
-    //   this.transactionDone = false;
-    //   try {
-    //     await this.web3.eth
-    //       .sendTransaction({
-    //         from: this.selectedAccount,
-    //         to: this.recieverAddress,
-    //         value: this.transactionAmount,
-    //         // common: { baseChain: "goerli" },
-    //       })
-    //       .on("transactionHash", (hash) => {
-    //         this.transactionHash = hash;
-    //       })
-    //       .on("receipt", () => {
-    //         alert("Transaction Successful!");
-    //         this.transactionDone = true;
-    //       })
-    //       .on("error", () => console.log("Unable to perform transaction: "));
-    //   } catch {
-    //     console.log("Unable to perform transaction ");
-    //   }
-    // },
   },
   async mounted() {
     //Initialize web3 instance and selected account
@@ -317,7 +410,6 @@ export default {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: center;
   margin-top: 10px;
 }
 
@@ -330,7 +422,7 @@ body {
 }
 .container {
   display: inline-block;
-  margin: 2rem 0;
+  margin: 2rem 3rem;
 }
 .button {
   padding: 0.5rem 1rem;
@@ -350,7 +442,7 @@ label {
 input,
 select {
   padding: 0.5rem 1rem;
-  margin: 1rem;
+  margin: 1rem 0rem;
   border-radius: 4px;
 }
 </style>
